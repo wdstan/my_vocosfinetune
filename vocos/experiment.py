@@ -32,6 +32,7 @@ class VocosExp(pl.LightningModule):
         evaluate_utmos: bool = False,
         evaluate_pesq: bool = False,
         evaluate_periodicty: bool = False,
+        load_pretrain=False,
     ):
         """
         Args:
@@ -58,6 +59,13 @@ class VocosExp(pl.LightningModule):
 
         self.multiperioddisc = MultiPeriodDiscriminator()
         self.multiresddisc = MultiResolutionDiscriminator()
+        print('+++++++++++++++')
+        if load_pretrain:
+            from vocos import Vocos
+            pretrian_vocos = Vocos.from_pretrained("charactr/vocos-mel-24khz")
+            self.backbone.load_state_dict(pretrian_vocos.backbone.state_dict())
+            self.head.load_state_dict(pretrian_vocos.head.state_dict())
+            print('########## charactr/vocos-mel-24khz load ###########')
 
         self.disc_loss = DiscriminatorLoss()
         self.gen_loss = GeneratorLoss()

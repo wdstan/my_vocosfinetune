@@ -33,6 +33,7 @@ class VocosExp(pl.LightningModule):
         evaluate_pesq: bool = False,
         evaluate_periodicty: bool = False,
         load_pretrain=False,
+        ckpt_path = None
     ):
         """
         Args:
@@ -66,6 +67,12 @@ class VocosExp(pl.LightningModule):
             self.backbone.load_state_dict(pretrian_vocos.backbone.state_dict())
             self.head.load_state_dict(pretrian_vocos.head.state_dict())
             print('########## charactr/vocos-mel-24khz load ###########')
+        if ckpt_path is not None:
+            ckpt = torch.load(ckpt_path)
+            out = self.backbone.load_state_dict(ckpt['state_dict'], strict=False)
+            print('########## ckpt_path load ###########')
+            print('ckpt_path:', ckpt_path)
+            print(out)
 
         self.disc_loss = DiscriminatorLoss()
         self.gen_loss = GeneratorLoss()

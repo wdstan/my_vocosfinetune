@@ -33,20 +33,19 @@ model:
     evaluate_pesq: true
     evaluate_periodicty: true
     load_pretrain: false
+    # ckpt_path: /data3/tansongbin/vocoder_projects/my_vocosfinetune/logs/lightning_logs/version_0/checkpoints/vocos_checkpoint_epoch=129_step=488020_val_loss=4.9799.ckpt
 
     feature_extractor:
-      class_path: vocos.feature_extractors.MelSpectrogramFeatures
+      class_path: vocos.feature_extractors.SpectrogramFeatures
       init_args:
-        sample_rate: 16000
         n_fft: 320
         hop_length: 160
-        n_mels: 64
         padding: center
-
+    
     backbone:
       class_path: vocos.models.VocosBackbone
       init_args:
-        input_channels: 64
+        input_channels: 161
         dim: 512
         intermediate_dim: 1536
         num_layers: 8
@@ -64,6 +63,7 @@ trainer:
     class_path: pytorch_lightning.loggers.TensorBoardLogger
     init_args:
       save_dir: logs/
+      name: vocos_spec/
   callbacks:
     - class_path: pytorch_lightning.callbacks.LearningRateMonitor
     - class_path: pytorch_lightning.callbacks.TQDMProgressBar
@@ -87,5 +87,6 @@ trainer:
   limit_val_batches: 100
   accelerator: gpu
   strategy: ddp
-  devices: [0,1]
+  devices: [2,3]
   log_every_n_steps: 100
+

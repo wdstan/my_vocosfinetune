@@ -49,6 +49,32 @@ class MelSpectrogramFeatures(FeatureExtractor):
         return features
 
 
+class SpectrogramFeatures(FeatureExtractor):
+    def __init__(self, n_fft=1024, hop_length=256, padding="center"):
+        super().__init__()
+        import numpy as np
+        if padding not in ["center", "same"]:
+            raise ValueError("Padding must be 'center' or 'same'.")
+        self.hop_length = hop_length
+        self.win_length = n_fft
+        self.filter_length = n_fft
+        self.padding = padding
+        window = np.hanning(n_fft+2)[1:-1]
+        self.window = torch.from_numpy(window.astype(np.float32))
+
+    def forward(self, audio, **kwargs):
+        forward_transform = torch.stft(
+            audio,
+            self.filter_length,
+            self.hop_length,
+            self.win_length,
+            window=self.window.to(audio.device),
+            return_complex=True,
+            center=(self.padding=='center')
+        )
+        features = safe_log(torch.abs(forward_transform))
+        return features
+
 class EncodecFeatures(FeatureExtractor):
     def __init__(
         self,

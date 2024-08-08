@@ -22,6 +22,16 @@ class FourierHead(nn.Module):
         """
         raise NotImplementedError("Subclasses must implement the forward method.")
 
+    def forward1(self, x: torch.Tensor) -> torch.Tensor:
+        """
+        Args:
+            x (Tensor): Input tensor of shape (B, L, H), where B is the batch size,
+                        L is the sequence length, and H denotes the model dimension.
+
+        Returns:
+            Tensor: Reconstructed time-domain audio signal of shape (B, T), where T is the length of the output signal.
+        """
+        raise NotImplementedError("Subclasses must implement the forward method.")
 
 class ISTFTHead(FourierHead):
     """
@@ -67,6 +77,34 @@ class ISTFTHead(FourierHead):
         S = mag * (x + 1j * y)
         audio = self.istft(S)
         return audio
+
+    def forward1(self, x: torch.Tensor):
+        """
+        Forward pass of the ISTFTHead module.
+
+        Args:
+            x (Tensor): Input tensor of shape (B, L, H), where B is the batch size,
+                        L is the sequence length, and H denotes the model dimension.
+
+        Returns:
+            Tensor: Reconstructed time-domain audio signal of shape (B, T), where T is the length of the output signal.
+        """
+        x = self.out(x).transpose(1, 2)
+        mag, p = x.chunk(2, dim=1)
+        mag = torch.exp(mag)
+        mag = torch.clip(mag, max=1e2)  # safeguard to prevent excessively large magnitudes
+        # wrapping happens here. These two lines produce real and imaginary value
+        x = torch.cos(p)
+        y = torch.sin(p)
+        # recalculating phase here does not produce anything new
+        # only costs time
+        # phase = torch.atan2(y, x)
+        # S = mag * torch.exp(phase * 1j)
+        #   directly produce the complex value 
+        S = mag * (x + 1j * y)
+        audio = self.istft(S)
+        return audio, mag, p
+
 
 
 class IMDCTSymExpHead(FourierHead):

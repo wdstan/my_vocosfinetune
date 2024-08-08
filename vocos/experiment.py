@@ -68,8 +68,8 @@ class VocosExp(pl.LightningModule):
             self.head.load_state_dict(pretrian_vocos.head.state_dict())
             print('########## charactr/vocos-mel-24khz load ###########')
         if ckpt_path is not None:
-            ckpt = torch.load(ckpt_path)
-            out = self.backbone.load_state_dict(ckpt['state_dict'], strict=False)
+            ckpt = torch.load(ckpt_path, map_location='cpu')
+            out = self.load_state_dict(ckpt['state_dict'], strict=False)
             print('########## ckpt_path load ###########')
             print('ckpt_path:', ckpt_path)
             print(out)
@@ -93,8 +93,8 @@ class VocosExp(pl.LightningModule):
             {"params": self.head.parameters()},
         ]
 
-        opt_disc = torch.optim.AdamW(disc_params, lr=self.hparams.initial_learning_rate, betas=(0.8, 0.9))
-        opt_gen = torch.optim.AdamW(gen_params, lr=self.hparams.initial_learning_rate, betas=(0.8, 0.9))
+        opt_disc = torch.optim.RMSprop(disc_params, lr=self.hparams.initial_learning_rate)
+        opt_gen = torch.optim.RMSprop(gen_params, lr=self.hparams.initial_learning_rate)
 
         max_steps = self.trainer.max_steps // 2  # Max steps per optimizer
         scheduler_disc = transformers.get_cosine_schedule_with_warmup(

@@ -112,6 +112,24 @@ class MyVocos(nn.Module):
         return audio_output,features
 
     @torch.inference_mode()
+    def forward1(self, audio_input: torch.Tensor, **kwargs: Any) -> torch.Tensor:
+        """
+        Method to run a copy-synthesis from audio waveform. The feature extractor first processes the audio input,
+        which is then passed through the backbone and the head to reconstruct the audio output.
+
+        Args:
+            audio_input (Tensor): The input tensor representing the audio waveform of shape (B, T),
+                                        where B is the batch size and L is the waveform length.
+
+
+        Returns:
+            Tensor: The output tensor representing the reconstructed audio waveform of shape (B, T).
+        """
+        features = self.feature_extractor(audio_input, **kwargs)
+        audio_output,mag,p = self.decode1(features, **kwargs)
+        return audio_output,features,mag,p
+
+    @torch.inference_mode()
     def decode(self, features_input: torch.Tensor, **kwargs: Any) -> torch.Tensor:
         """
         Method to decode audio waveform from already calculated features. The features input is passed through
@@ -127,6 +145,23 @@ class MyVocos(nn.Module):
         x = self.backbone(features_input, **kwargs)
         audio_output = self.head(x)
         return audio_output
+
+    @torch.inference_mode()
+    def decode1(self, features_input: torch.Tensor, **kwargs: Any) -> torch.Tensor:
+        """
+        Method to decode audio waveform from already calculated features. The features input is passed through
+        the backbone and the head to reconstruct the audio output.
+
+        Args:
+            features_input (Tensor): The input tensor of features of shape (B, C, L), where B is the batch size,
+                                     C denotes the feature dimension, and L is the sequence length.
+
+        Returns:
+            Tensor: The output tensor representing the reconstructed audio waveform of shape (B, T).
+        """
+        x = self.backbone(features_input, **kwargs)
+        audio_output,mag,p = self.head.forward1(x)
+        return audio_output,mag,p
 
     @torch.inference_mode()
     def codes_to_features(self, codes: torch.Tensor) -> torch.Tensor:

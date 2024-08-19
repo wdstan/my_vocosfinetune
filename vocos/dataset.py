@@ -5,7 +5,8 @@ import torch
 import torchaudio
 from pytorch_lightning import LightningDataModule
 from torch.utils.data import Dataset, DataLoader
-
+from tqdm import tqdm
+import os
 torch.set_num_threads(1)
 
 
@@ -16,6 +17,7 @@ class DataConfig:
     num_samples: int
     batch_size: int
     num_workers: int
+    max_len: int
 
 
 class VocosDataModule(LightningDataModule):
@@ -44,28 +46,39 @@ class VocosDataset(Dataset):
             self.filelist = f.read().splitlines()
         self.sampling_rate = cfg.sampling_rate
         self.num_samples = cfg.num_samples
+        self.max_len = cfg.max_len
         self.train = train
+        self.wavs = []
+        self.read_data()
 
+    def read_data(self):
+        for wav_p in tqdm(self.filelist, desc=f"train={self.train} file loaded: ",mininterval=2):
+            y, sr = torchaudio.load(wav_p)
+            if y.size(0) > 1:
+                # mix to mono
+                y = y.mean(dim=0, keepdim=True)       
+            if sr != self.sampling_rate:
+                y = torchaudio.functional.resample(y, orig_freq=sr, new_freq=self.sampling_rate)     
+            if y.size(-1) < self.num_samples:
+                pad_length = self.num_samples - y.size(-1)
+                padding_tensor = y.repeat(1, 1 + pad_length // y.size(-1))
+                y = torch.cat((y, padding_tensor[:, :pad_length]), dim=1)
+            self.wavs.append(y)
+        np.random.shuffle(self.wavs)
+            
     def __len__(self) -> int:
-        return len(self.filelist)
+        return min(len(self.filelist), self.max_len)
 
     def __getitem__(self, index: int) -> torch.Tensor:
-        audio_path = self.filelist[index]
-        y, sr = torchaudio.load(audio_path)
-        if y.size(0) > 1:
-            # mix to mono
-            y = y.mean(dim=0, keepdim=True)
-        gain = np.random.uniform(-1, -6) if self.train else -3
-        y, _ = torchaudio.sox_effects.apply_effects_tensor(y, sr, [["norm", f"{gain:.2f}"]])
-        if sr != self.sampling_rate:
-            y = torchaudio.functional.resample(y, orig_freq=sr, new_freq=self.sampling_rate)
-        if y.size(-1) < self.num_samples:
-            pad_length = self.num_samples - y.size(-1)
-            padding_tensor = y.repeat(1, 1 + pad_length // y.size(-1))
-            y = torch.cat((y, padding_tensor[:, :pad_length]), dim=1)
-        elif self.train:
+        y = self.wavs[index]
+        if self.train:
+            sr = self.sampling_rate
+            gain = np.random.uniform(-1, -6) if self.train else -3
+            y, _ = torchaudio.sox_effects.apply_effects_tensor(y, sr, [["norm", f"{gain:.2f}"]])
             start = np.random.randint(low=0, high=y.size(-1) - self.num_samples + 1)
             y = y[:, start : start + self.num_samples]
+            if index == 0:
+                np.random.shuffle(self.wavs)
         else:
             # During validation, take always the first segment for determinism
             y = y[:, : self.num_samples]

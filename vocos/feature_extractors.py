@@ -59,8 +59,8 @@ class SpectrogramFeatures(FeatureExtractor):
         self.win_length = n_fft
         self.filter_length = n_fft
         self.padding = padding
-        window = np.hanning(n_fft+2)[1:-1]
-        self.window = torch.from_numpy(window.astype(np.float32))
+        # window = np.hanning(n_fft+2)[1:-1]
+        # self.window = torch.from_numpy(window.astype(np.float32))
         self.window = torch.hann_window(n_fft).float()
         
     def forward(self, audio, **kwargs):
